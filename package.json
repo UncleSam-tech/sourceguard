@@ -1,7 +1,7 @@
 {
   "name": "sourceguard",
   "version": "1.0.0",
-  "description": "SourceGuard Tier S MCP Server - Developer Intelligence",
+  "description": "SourceGuard MCP Server - Developer Intelligence",
   "type": "module",
   "main": "dist/server.js",
   "scripts": {

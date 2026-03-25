@@ -1,7 +1,7 @@
-# SourceGuard (Tier S MCP Server)
+# SourceGuard (Context MCP Server)
 
-an **enterprise-grade supply chain security and dependency risk scanner** built for AI Coding Agents. 
-Powered by the Model Context Protocol (MCP) and seamlessly integrated with Context Protocol's Handshake and Security middlewares.
+An **enterprise-grade supply chain security and dependency risk scanner** built for AI Coding Agents. 
+Designed to strictly follow Context Protocol's Tier S Architecture Principles, it is seamlessly integrated with the Context SDK and Security middlewares.
 
 SourceGuard mathematically calculates a repository's **"Bus Factor"** (maintainer concentration risk) and instantly scans the HEAD commit against the **OSV.dev (Open Source Vulnerabilities)** database, serving deep intelligence to AI Agents in under 5 seconds.
 
