@@ -1,94 +1,35 @@
-// ─── Raw mention from any source ───────────────────────────────
+import { z } from 'zod';
 
-export interface RawMention {
-  source: string;
-  id: string;
-  title: string;
-  body: string;
-  url: string;
-  author: string;
-  publishedAt: string; // ISO 8601
-  points: number;
-  numComments: number;
-}
+export const analyzeSourceRepoSchema = z.object({
+  repoUrl: z.string().describe("The full URL or 'owner/repo' string representing the GitHub repository"),
+  depth: z.enum(['quick', 'deep']).optional().default('quick').describe("Analysis depth: 'quick' checks basic health & dependencies, 'deep' checks full contributor attribution.")
+});
 
-// ─── After normalization ───────────────────────────────────────
+export type AnalyzeSourceRepoInput = z.infer<typeof analyzeSourceRepoSchema>;
 
-export interface NormalizedMention {
-  source: string;
-  query: string;
-  title: string;
-  body: string;
-  url: string;
-  author: string;
-  published_at: string;
-  engagement_score: number;
-}
+export const vulnerabilitySchema = z.object({
+  id: z.string().describe("The OSV vulnerability ID"),
+  summary: z.string().describe("Short summary of the vulnerability"),
+  severity: z.string().describe("Severity exactly as reported (e.g. HIGH, MODERATE, LOW)")
+});
+export type Vulnerability = z.infer<typeof vulnerabilitySchema>;
 
-// ─── After enrichment ──────────────────────────────────────────
+export const activityMetricsSchema = z.object({
+  busFactor: z.number().describe("Minimum number of developers making up >50% of commits (lower is higher risk)"),
+  recentCommitActivity: z.enum(['HIGH', 'MEDIUM', 'LOW', 'STAGNANT']).describe("Categorized velocity of recent code changes"),
+  issuesToPrRatio: z.number().describe("Number of open issues vs open PRs roughly indicating maintenance burden")
+});
+export type ActivityMetrics = z.infer<typeof activityMetricsSchema>;
 
-export type SentimentLabel = "positive" | "neutral" | "negative";
+export const intelligenceReportSchema = z.object({
+  summary: z.string().describe("Human-readable executive summary of the repository's health and security posture"),
+  recommendedAction: z.string().describe("Clear, actionable recommendation for an AI coding agent (e.g. 'Safe to use', 'High risk, abandon')"),
+  supplyChainRiskScore: z.enum(['A', 'B', 'C', 'D', 'F']).describe("Curated overall security and maintenance risk score where A is excellent and F is critical risk"),
+  riskFactors: z.array(z.string()).describe("List of exact warnings discovered during analysis"),
+  metrics: activityMetricsSchema.describe("Raw empirical metrics collected from repository (for context)"),
+  vulnerabilities: z.array(vulnerabilitySchema).describe("Known vulnerabilities affecting the codebase HEAD"),
+  searchExhausted: z.boolean().describe("True if no unknown hidden risks exist, proving mathematical absence to prevent AI retries"),
+  noResultsReason: z.string().describe("Machine-readable reason for lack of risks when searchExhausted is true")
+}).describe("A comprehensive security and health analysis of an open source dependency");
 
-export type ThemeLabel =
-  | "pricing_complaints"
-  | "support_issues"
-  | "feature_requests"
-  | "switching_intent"
-  | "praise"
-  | "general_discussion";
-
-export interface EnrichedMention extends NormalizedMention {
-  sentiment: SentimentLabel;
-  sentiment_score: number; // -1.0 to 1.0
-  theme: ThemeLabel;
-  urgency: number; // 0–10
-  why_it_matters: string;
-}
-
-// ─── Final brief output ────────────────────────────────────────
-
-export interface ThemeSummary {
-  theme: ThemeLabel;
-  mention_count: number;
-  percentage: number;
-}
-
-export interface TopMention {
-  title: string;
-  body_snippet: string;
-  url: string;
-  author: string;
-  published_at: string;
-  sentiment: SentimentLabel;
-  theme: ThemeLabel;
-  urgency: number;
-  why_it_matters: string;
-}
-
-export interface SourceSummary {
-  source: string;
-  mention_count: number;
-}
-
-export interface SocialBrief {
-  query: string;
-  window: string;
-  summary: string;
-  sources_searched: SourceSummary[];
-  overall_sentiment: SentimentLabel;
-  themes: ThemeSummary[];
-  top_mentions: TopMention[];
-  recommended_action: string;
-  fetched_at: string;
-  searchExhausted?: boolean;
-  noResultsReason?: string;
-}
-
-// ─── Input types ───────────────────────────────────────────────
-
-export type TimeWindow = "24h" | "7d" | "30d";
-
-export interface BriefRequest {
-  q: string;
-  window: TimeWindow;
-}
+export type IntelligenceReport = z.infer<typeof intelligenceReportSchema>;

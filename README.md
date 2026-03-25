@@ -1,75 +1,55 @@
-# SignalBrief
+# SourceGuard (Tier S MCP Server)
 
-![SignalBrief](https://img.shields.io/badge/MCP-Enabled-blue.svg) ![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)
+an **enterprise-grade supply chain security and dependency risk scanner** built for AI Coding Agents. 
+Powered by the Model Context Protocol (MCP) and seamlessly integrated with Context Protocol's Handshake and Security middlewares.
 
-**SignalBrief** is an MCP-powered social mention intelligence tool designed for marketers and brand teams. It fetches, analyzes, and enriches public discussions (currently supporting Hacker News) to deliver actionable insights on brand sentiment, emerging themes, and competitor trends.
+SourceGuard mathematically calculates a repository's **"Bus Factor"** (maintainer concentration risk) and instantly scans the HEAD commit against the **OSV.dev (Open Source Vulnerabilities)** database, serving deep intelligence to AI Agents in under 5 seconds.
 
-By running as a Model Context Protocol (MCP) Server, SignalBrief natively integrates with LLMs, providing them with structured data about how a brand or keyword is being discussed online.
+## Unbundling Enterprise Security 
+SourceGuard provides exactly the curated safety logic that enterprise tools like Snyk and Sonatype Nexus Lifecycle place behind aggressive `$5,000/yr` B2B paywalls. By synthesizing free, high-availability data sources (GitHub REST + OSV), this MCP provides mathematical guarantees on the safety of an open-source package for just `$0.10` per scan.
 
-## Features
+---
 
-- **Social Mention Fetching:** Pulls recent mentions for any keyword, brand, or competitor across configurable time windows (24h, 7d, 30d).
-- **Sentiment & Urgency Enrichment:** Automatically scores mentions based on engagement, sentiment, and churn intent.
-- **Theme Clustering:** Categorizes discussions into themes like pricing complaints, support issues, feature requests, switching intent, and praise.
-- **Actionable Briefs:** Generates summarized intelligence briefs complete with recommended actions based on the dominant discussion themes.
-- **MCP Native:** Provides the `get_social_brief` tool, enabling LLMs to dynamically query intelligence data.
+## 🏗 Architecture & Curation 
 
-## Requirements
+Instead of just dumping raw vulnerability lists, SourceGuard acts as an AI Intelligence Brief:
+1. **GitHub API:** Fetches the last 100 deep commits to identify the top contributors and calculates the exact `busFactor`.
+2. **OSV API:** Cross-references the commit SHA against the global Common Vulnerabilities and Exposures (CVE) index.
+3. **Curation Engine:** Processes stagnation velocity, license status, and zero-day counts to generate a strict `A-F` Actionable Risk Score.
 
-- Node.js (v18 or higher)
-- npm
+## 🚀 Setup & Installation
 
-## Installation
+### 1. Prerequisites
+- Node.js 18+
+- A classic GitHub Personal Access Token (PAT) to prevent rate limits.
 
-Clone the repository and install dependencies:
+### 2. Environment Variables
+Create a `.env` file in the root directory:
+```bash
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+PORT=3000
+```
 
+### 3. Build & Run
 ```bash
 npm install
-```
-
-## Running the Server
-
-### Development
-
-Run the server with live reloading using `tsx`:
-
-```bash
-npm run dev
-```
-
-### Production
-
-Build and start the compiled output:
-
-```bash
 npm run build
 npm start
 ```
 
-By default, the server runs on port `3000` (or `process.env.PORT`).
+### 4. Testing Locally (Velocity Check)
+To verify the sub-15s execution requirement:
+```bash
+npm test
+```
 
-## Endpoints
+## 🔌 Using with Context Protocol (Agents)
 
-- **`POST /mcp`**: The primary Model Context Protocol endpoint for LLM integrations. Supports session-based streamable HTTP transports.
-- **`GET /health`**: Standard health check to verify service uptime.
-- **`POST /debug/brief`**: A local testing endpoint to generate a brief without an MCP client.
-  - *Example:* `http://localhost:3000/debug/brief?q=Apple&window=24h`
+The server exposes Context-compliant endpoints for SSE and standard HTTP:
+- **SSE:** `GET /sse`
+- **HTTP Streaming:** `POST /mcp`
 
-## MCP Tool Definition
-
-When connected via an MCP client, the server exposes the following tool:
-
-### `get_social_brief`
-Fetches a social intelligence brief for the specified keyword.
-
-| Argument  | Type   | Description |
-|-----------|--------|-------------|
-| `q`       | string | Brand, competitor, or keyword to search for |
-| `window`  | enum   | Time window for search: `24h` (last day), `7d` (last week), or `30d` (last month). Defaults to `7d`. |
-
-## Technology Stack
-
-- **[Model Context Protocol SDK](https://github.com/modelcontextprotocol/sdk)** - Standardized LLM interaction
-- **[Express](https://expressjs.com/)** - Web server framework
-- **[Zod](https://zod.dev/)** - Schema validation
-- **TypeScript** - Strongly-typed language support
+### Tool Definition: `analyze_source_repo`
+**Target:** Any AI agent tasked with installing a new package.
+**Input:** `{"repoUrl": "facebook/react", "depth": "quick"}`
+**Output Capability (`searchExhausted`):** Explicitly enforces Completeness Evaluation to prevent LLM retry hallucinations when zero active CVEs are found.

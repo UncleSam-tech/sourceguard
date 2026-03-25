@@ -1,79 +1,72 @@
-import type { RawMention, TimeWindow } from "../types.js";
+import axios from 'axios';
 
-const GITHUB_API_BASE = "https://api.github.com";
+const headers: Record<string, string> = {
+  'Accept': 'application/vnd.github.v3+json',
+  'User-Agent': 'SourceGuard-MCP-Server-Tier-S'
+};
 
-function getIsoDate(window: TimeWindow): string {
-  const now = new Date();
-  switch (window) {
-    case "24h":
-      now.setUTCDate(now.getUTCDate() - 1);
-      break;
-    case "7d":
-      now.setUTCDate(now.getUTCDate() - 7);
-      break;
-    case "30d":
-      now.setUTCDate(now.getUTCDate() - 30);
-      break;
-    default:
-      now.setUTCDate(now.getUTCDate() - 7);
-  }
-  return now.toISOString().split("T")[0]; // YYYY-MM-DD
+if (process.env.GITHUB_TOKEN) {
+  headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`;
 }
 
-export async function fetchGitHubMentions(
-  query: string,
-  window: TimeWindow,
-): Promise<RawMention[]> {
-  const dateStr = getIsoDate(window);
-  const q = `${query} updated:>=${dateStr} is:issue`;
-  
-  const searchParams = new URLSearchParams({
-    q,
-    sort: "updated",
-    order: "desc",
-    per_page: "25",
-  });
+const github = axios.create({
+  baseURL: 'https://api.github.com/',
+  headers
+});
 
-  const url = `${GITHUB_API_BASE}/search/issues?${searchParams.toString()}`;
+export interface GithubRepoInfo {
+  name: string;
+  owner: string;
+  stargazersCount: number;
+  openIssuesCount: number;
+  hasLicense: boolean;
+  updatedAt: string;
+}
 
+export async function fetchRepoInfo(owner: string, repo: string): Promise<GithubRepoInfo | null> {
   try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": "SignalBrief/1.0 (MCP Server)",
-        Accept: "application/vnd.github.v3+json",
-      },
-    });
-
-    if (!res.ok) {
-      if (res.status === 403) {
-        console.warn("GitHub API rate limit hit (403). Returning empty array.");
-        return [];
+    const response = await github.get(`/repos/${owner}/${repo}`);
+    return {
+      name: response.data.name,
+      owner: response.data.owner.login,
+      stargazersCount: response.data.stargazers_count,
+      openIssuesCount: response.data.open_issues_count,
+      hasLicense: !!response.data.license,
+      updatedAt: response.data.updated_at
+    };
+  } catch (err: any) {
+    if (axios.isAxiosError(err)) {
+      if (err.response?.status === 404) return null;
+      if (err.response?.status === 401) {
+        throw new Error(`Your GITHUB_TOKEN is invalid (401 Unauthorized). Please check your .env file and ensure you are using a valid Personal Access Token.`);
       }
-      throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+      if (err.response?.status === 403) {
+        throw new Error(`GitHub API rate limit exceeded (403 Forbidden). Please add a valid GITHUB_TOKEN to your .env file.`);
+      }
     }
+    throw new Error(`Failed to fetch repo info: ${err.message}`);
+  }
+}
 
-    const data = await res.json();
-    if (!data?.items) {
-      return [];
-    }
-
-    const mentions: RawMention[] = data.items.map((issue: any) => {
-      return {
-        source: "github",
-        id: issue.id.toString(),
-        title: issue.title || "",
-        body: issue.body || "",
-        url: issue.html_url || url,
-        author: issue.user?.login || "unknown",
-        publishedAt: issue.updated_at || issue.created_at || new Date().toISOString(),
-        points: issue.reactions?.total_count || 0,
-        numComments: issue.comments || 0,
-      };
-    });
-
-    return mentions;
+export async function fetchContributors(owner: string, repo: string): Promise<number[]> {
+  try {
+    const response = await github.get(`/repos/${owner}/${repo}/contributors?per_page=100`);
+    return response.data.map((c: any) => c.contributions as number);
   } catch (err) {
-    console.error("Failed to fetch GitHub mentions:", err);
-    return []; // Return empty array on failure so pipeline continues
+    console.warn(`Could not fetch contributors, might be rate limited: ${err}`);
+    return [];
+  }
+}
+
+export async function fetchLatestCommit(owner: string, repo: string): Promise<string | null> {
+  try {
+    const response = await github.get(`/repos/${owner}/${repo}/commits?per_page=1`);
+    if (response.data && response.data.length > 0) {
+      return response.data[0].sha;
+    }
+    return null;
+  } catch (err) {
+    console.warn(`Could not fetch latest commit: ${err}`);
+    return null;
   }
 }
